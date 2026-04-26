@@ -123,7 +123,7 @@ const StudentDashboard = () => {
             }
 
             // Fetch applications
-            const appsRes = await apiFetch(`/applications/student/${userId}`);
+            const appsRes = await apiFetch(`/applications/student/${userId}?t=${new Date().getTime()}`);
             if (appsRes.ok) {
                 const appsData = await appsRes.json();
                 setApplications(appsData);

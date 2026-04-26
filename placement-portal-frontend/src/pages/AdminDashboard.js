@@ -14,6 +14,10 @@ const AdminDashboard = () => {
     const [activityLoading, setActivityLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
+    // --- Creative Features State ---
+    const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
+    const [spotlightQuery, setSpotlightQuery] = useState('');
+
     const [data, setData] = useState({
         totalStudents: 0,
         totalCompanies: 0,
@@ -25,6 +29,21 @@ const AdminDashboard = () => {
     });
 
     const [toast, setToast] = useState({ message: '', type: '' });
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsSpotlightOpen(prev => !prev);
+                setSpotlightQuery('');
+            }
+            if (e.key === 'Escape') {
+                setIsSpotlightOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const handleViewResume = async (studentId) => {
         try {
@@ -57,7 +76,7 @@ const AdminDashboard = () => {
 
     const fetchAdminData = async () => {
         try {
-            const response = await apiFetch('/admin/dashboard');
+            const response = await apiFetch(`/admin/dashboard?t=${new Date().getTime()}`);
             if (response.ok) {
                 const result = await response.json();
                 setData(result);
@@ -95,6 +114,32 @@ const AdminDashboard = () => {
         return inName || inEmail || inSkills;
     });
 
+    // --- Derived Analytics Logic ---
+    const calculateTopSkills = () => {
+        const skillCounts = {};
+        data.students.forEach(student => {
+            if (student.skills && student.skills.length > 0) {
+                student.skills.forEach(skill => {
+                    const s = skill.trim().toUpperCase();
+                    if(s) skillCounts[s] = (skillCounts[s] || 0) + 1;
+                });
+            }
+        });
+        return Object.entries(skillCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    };
+    const topSkills = calculateTopSkills();
+    const placementRate = data.totalStudents > 0 ? Math.round((data.totalPlacements / data.totalStudents) * 100) : 0;
+    const recentActivity = data.applications.slice(0, 5);
+
+    // Spotlight search logic
+    const spotlightResults = () => {
+        if (!spotlightQuery) return [];
+        const term = spotlightQuery.toLowerCase();
+        const sResults = data.students.filter(s => s.name?.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term) || s.skills?.some(skill => skill.toLowerCase().includes(term))).map(s => ({...s, type: 'Student'}));
+        const cResults = data.companies.filter(c => c.name?.toLowerCase().includes(term)).map(c => ({...c, type: 'Company'}));
+        return [...sResults, ...cResults].slice(0, 8);
+    };
+
     return (
         <div style={{ paddingTop: '110px', paddingLeft: '80px', paddingRight: '80px', paddingBottom: '80px', color: 'black' }}>
             
@@ -111,7 +156,10 @@ const AdminDashboard = () => {
                         Overview of student placements, company postings, and system activity.
                     </p>
                 </div>
-                <div>
+                <div className="d-flex gap-3 align-items-center">
+                    <button className="d-flex align-items-center gap-2" style={{ padding: '10px 16px', background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '12px', cursor: 'text', color: 'rgba(0,0,0,0.6)', transition: 'all 0.2s' }} onClick={() => setIsSpotlightOpen(true)} onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}>
+                        <span style={{ fontSize: '1.1rem' }}>🔍</span> Search... <kbd style={{ background: '#fff', color: '#000', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid #ddd', fontFamily: 'inherit', fontWeight: 'bold' }}>Ctrl K</kbd>
+                    </button>
                     <button className="fw-bold" style={{ padding: '12px 24px', fontSize: '15px', background: 'transparent', border: '1px solid #000', color: '#000', cursor: 'pointer', transition: 'all 0.3s', borderRadius: '12px' }}
                         onClick={handleLogout}
                         onMouseOver={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
@@ -121,6 +169,22 @@ const AdminDashboard = () => {
                     </button>
                 </div>
             </motion.div>
+
+            {/* Live Pulse Ticker */}
+            {recentActivity.length > 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 overflow-hidden" style={{ background: 'linear-gradient(90deg, #000, #222)', color: '#fff', padding: '10px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '15px', whiteSpace: 'nowrap' }}>
+                    <div style={{ width: '8px', height: '8px', background: '#0f0', borderRadius: '50%', boxShadow: '0 0 10px #0f0', animation: 'pulse 1.5s infinite' }} />
+                    <span className="fw-bold" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Live Pulse</span>
+                    <marquee behavior="scroll" direction="left" scrollamount="5" style={{ flexGrow: 1, margin: 0, padding: 0 }}>
+                        {recentActivity.map((app, i) => (
+                            <span key={i} style={{ marginRight: '50px', fontSize: '0.95rem' }}>
+                                <strong>{app.student?.name}</strong> {app.status === 'Selected' ? '🎉 was selected for' : '⚡ applied for'} <strong>{app.internship?.roleTitle}</strong> at <strong>{app.internship?.companyName}</strong>
+                            </span>
+                        ))}
+                    </marquee>
+                    <style>{`@keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); } }`}</style>
+                </motion.div>
+            )}
 
             {/* Tab Menu */}
             <div className="d-flex gap-2 mb-4 overflow-auto">
@@ -144,7 +208,7 @@ const AdminDashboard = () => {
                                 { label: 'Active Opportunities', value: data.totalOpportunities },
                                 { label: 'Placements Activity', value: data.totalPlacements }
                             ].map((stat, idx) => (
-                                <motion.div key={idx} className="col-12 col-md-3" variants={itemVariants}>
+                                <motion.div key={idx} className="col-12 col-md-3" initial="hidden" animate="show" variants={itemVariants}>
                                     <div className="universal-glass-card p-4 text-center" style={{ background: '#fff' }}>
                                         <h2 className="fw-bold mb-1" style={{ fontSize: '3rem', color: '#000' }}>{stat.value}</h2>
                                         <p className="mb-0 fw-semibold" style={{ color: 'rgba(0,0,0,0.5)' }}>{stat.label}</p>
@@ -152,13 +216,57 @@ const AdminDashboard = () => {
                                 </motion.div>
                             ))}
                             
-                            <div className="col-12 mt-5">
-                                <h3 className="fw-bold mb-4">System Activity Summary</h3>
-                                <div className="universal-glass-card p-5 text-center">
-                                    <p style={{ fontSize: '1.2rem', color: 'rgba(0,0,0,0.6)' }}>
-                                        The placement portal is currently connecting <strong>{data.totalStudents} students</strong> with <strong>{data.totalCompanies} companies</strong>.
-                                        There are <strong>{data.totalOpportunities} active job/internship postings</strong> with a high engagement rate.
-                                    </p>
+                            {/* Analytics Enhancements */}
+                            <div className="col-12 mt-4">
+                                <div className="row g-4">
+                                    {/* Success Rate Ring */}
+                                    <div className="col-md-4">
+                                        <div className="universal-glass-card p-4 d-flex flex-column align-items-center justify-content-center h-100" style={{ background: '#fff' }}>
+                                            <h4 className="fw-bold mb-4" style={{ color: '#000', alignSelf: 'flex-start' }}>Placement Rate</h4>
+                                            <div style={{ position: 'relative', width: '150px', height: '150px' }}>
+                                                <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
+                                                    <path strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" strokeWidth="3" />
+                                                    <motion.path 
+                                                        strokeDasharray={`${placementRate}, 100`} 
+                                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                                                        fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" 
+                                                        initial={{ strokeDasharray: '0, 100' }}
+                                                        animate={{ strokeDasharray: `${placementRate}, 100` }}
+                                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                                    />
+                                                </svg>
+                                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                                                    <span className="fw-bold" style={{ fontSize: '2rem' }}>{placementRate}%</span>
+                                                </div>
+                                            </div>
+                                            <p className="mt-4 mb-0 text-center" style={{ color: 'rgba(0,0,0,0.5)', fontSize: '0.9rem' }}>Based on successful interviews and selections</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Skill Cloud */}
+                                    <div className="col-md-8">
+                                        <div className="universal-glass-card p-4 h-100 d-flex flex-column" style={{ background: '#fff' }}>
+                                            <h4 className="fw-bold mb-4" style={{ color: '#000' }}>Trending Skills Matrix</h4>
+                                            <div className="d-flex flex-wrap gap-3 align-items-center justify-content-center flex-grow-1 pb-4">
+                                                {topSkills.length > 0 ? topSkills.map(([skill, count], idx) => {
+                                                    const fontSize = Math.max(0.8, Math.min(2.5, 0.8 + (count * 0.2)));
+                                                    const opacity = Math.max(0.4, Math.min(1, 0.4 + (count * 0.1)));
+                                                    return (
+                                                        <motion.span 
+                                                            key={idx} 
+                                                            initial={{ opacity: 0, scale: 0.5 }}
+                                                            animate={{ opacity, scale: 1 }}
+                                                            transition={{ delay: idx * 0.05 }}
+                                                            style={{ fontSize: `${fontSize}rem`, fontWeight: 'bold', color: '#000', cursor: 'default' }}
+                                                            whileHover={{ scale: 1.1, opacity: 1, textShadow: '0px 5px 15px rgba(0,0,0,0.2)' }}
+                                                        >
+                                                            {skill}
+                                                        </motion.span>
+                                                    )
+                                                }) : <span style={{ color: 'rgba(0,0,0,0.5)' }}>Not enough data to generate skill matrix.</span>}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -258,7 +366,7 @@ const AdminDashboard = () => {
                             <h3 className="fw-bold mb-4">Global Activity Feed</h3>
                             <div className="timeline-container px-2">
                                 {data.applications.length > 0 ? data.applications.map((app, idx) => (
-                                    <motion.div variants={itemVariants} key={idx} className="d-flex mb-4 position-relative">
+                                    <motion.div initial="hidden" animate="show" variants={itemVariants} key={idx} className="d-flex mb-4 position-relative">
                                         <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: app.status === 'Selected' ? '#000' : '#ccc', marginTop: '5px', flexShrink: 0, position: 'relative', zIndex: 2 }}></div>
                                         {idx !== data.applications.length - 1 && <div style={{ position: 'absolute', left: '7px', top: '20px', bottom: '-25px', width: '2px', background: '#eee', zIndex: 1 }}></div>}
                                         <div className="ms-4 p-3 w-100" style={{ background: '#fcfcfc', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
@@ -374,6 +482,61 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                             )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Spotlight Search Modal */}
+            <AnimatePresence>
+                {isSpotlightOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }}
+                        onClick={() => setIsSpotlightOpen(false)}
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: -20 }} 
+                            animate={{ scale: 1, opacity: 1, y: 0 }} 
+                            exit={{ scale: 0.95, opacity: 0, y: -20 }} 
+                            className="universal-glass-card p-0" 
+                            style={{ background: '#fff', width: '90%', maxWidth: '650px', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="d-flex align-items-center p-3 border-bottom" style={{ background: '#fcfcfc' }}>
+                                <span style={{ fontSize: '1.5rem', marginRight: '15px', color: '#888' }}>🔍</span>
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    placeholder="Search students, companies, skills..." 
+                                    value={spotlightQuery}
+                                    onChange={(e) => setSpotlightQuery(e.target.value)}
+                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '1.2rem', color: '#000' }}
+                                />
+                                <button onClick={() => setIsSpotlightOpen(false)} style={{ background: 'transparent', border: 'none', fontSize: '0.8rem', color: '#888', background: '#eee', padding: '4px 8px', borderRadius: '6px' }}>ESC</button>
+                            </div>
+                            <div className="p-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                {spotlightQuery && spotlightResults().length === 0 ? (
+                                    <div className="text-center py-4" style={{ color: '#888' }}>No results found for "{spotlightQuery}"</div>
+                                ) : spotlightResults().map((res, i) => (
+                                    <div key={i} className="p-3 mb-1 d-flex justify-content-between align-items-center" style={{ borderRadius: '10px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background='#f5f5f5'} onMouseOut={e => e.currentTarget.style.background='transparent'} onClick={() => {
+                                        setIsSpotlightOpen(false);
+                                        if (res.type === 'Student') { setActiveTab('Students'); setSearchTerm(res.name); }
+                                        if (res.type === 'Company') { setActiveTab('Companies'); }
+                                    }}>
+                                        <div>
+                                            <span className="fw-bold d-block text-dark">{res.name}</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#666' }}>{res.email}</span>
+                                        </div>
+                                        <span className="badge" style={{ background: res.type === 'Student' ? '#eef2ff' : '#f0fdf4', color: res.type === 'Student' ? '#4f46e5' : '#166534' }}>{res.type}</span>
+                                    </div>
+                                ))}
+                                {!spotlightQuery && (
+                                    <div className="text-center py-4" style={{ color: '#aaa', fontSize: '0.9rem' }}>Type to search across the entire placement portal.</div>
+                                )}
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
