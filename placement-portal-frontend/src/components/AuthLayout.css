@@ -1,7 +1,9 @@
 .auth-wrapper {
     position: relative;
+    width: 100%;
     min-height: 100vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     overflow-x: hidden;
 }
 
@@ -32,9 +34,11 @@
 .content-layer {
     position: relative;
     z-index: 2;
-    padding: 100px 20px 40px;
-    /* Space for logos at top */
-    min-height: 100vh;
+    padding: 120px 5% 40px; /* Responsive side padding */
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .content-layer-centered {
@@ -61,16 +65,16 @@
 
 /* Background Scrolling Branding (Globally for Auth Pages) */
 .marquee-wrapper {
-  position: absolute;
+  position: fixed; /* Fixed so it doesn't affect document height */
   top: 50%;
   left: 0;
   transform: translateY(-50%);
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
   white-space: nowrap;
   z-index: 0; 
   pointer-events: none;
-  opacity: 0.15; /* Increased opacity so the text blurs heavily behind the glass panels */
+  opacity: 0.1; /* Reduced opacity for better readability */
 }
 
 .marquee-track {

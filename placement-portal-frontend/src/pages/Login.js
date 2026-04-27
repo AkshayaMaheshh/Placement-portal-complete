@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { loginUser } from '../services/api';
+import { loginUser, loginWithGoogle } from '../services/api';
 import AuthLayout from '../components/AuthLayout';
+import { GoogleLogin } from '@react-oauth/google';
 import './Login.css';
 
 const Login = () => {
@@ -17,22 +18,28 @@ const Login = () => {
     setErrorMsg('');
     try {
       const data = await loginUser({ email, password });
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userId', data.id);
-      localStorage.setItem('studentId', data.id); // Retain for existing dashboards
-      localStorage.setItem('role', data.role);
-
-      if (data.role === 'STUDENT') {
-        navigate('/dashboard');
-      } else if (data.role === 'COMPANY') {
-        navigate('/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      handleAuthSuccess(data);
     } catch (error) {
       setErrorMsg(error.message || 'Login failed: Invalid data or server issue.');
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setErrorMsg('');
+    try {
+      const data = await loginWithGoogle(credentialResponse.credential);
+      handleAuthSuccess(data);
+    } catch (error) {
+      setErrorMsg(error.message || 'Google Login failed.');
+    }
+  };
+
+  const handleAuthSuccess = (data) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('userId', data.id);
+    localStorage.setItem('studentId', data.id);
+    localStorage.setItem('role', data.role);
+    navigate('/dashboard');
   };
 
   return (
@@ -114,6 +121,25 @@ const Login = () => {
           <button type="submit" className="deep-glass-btn mt-3 w-100">
             Sign In
           </button>
+
+          <div className="d-flex align-items-center gap-2 my-2">
+            <hr className="flex-grow-1" style={{ opacity: 0.1 }} />
+            <span style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', fontWeight: 'bold' }}>OR</span>
+            <hr className="flex-grow-1" style={{ opacity: 0.1 }} />
+          </div>
+
+          <div className="d-flex justify-content-center">
+            <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setErrorMsg('Google Sign-In was cancelled or failed')}
+                useOneTap
+                theme="outline"
+                shape="pill"
+                size="large"
+                text="continue_with"
+                width="320"
+            />
+          </div>
 
           <div className="text-center mt-1">
             <Link to="/register" style={{ color: '#000', textDecoration: 'underline', fontSize: '14px' }}>

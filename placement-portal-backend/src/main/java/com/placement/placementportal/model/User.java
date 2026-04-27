@@ -19,6 +19,10 @@ public class User {
     private String password;
 
     private String role;
+    private String department;
+    private Double cgpa;
+    private String skills;
+    private String graduationYear;
 
     public User() {
     }
@@ -29,6 +33,17 @@ public class User {
         this.email = email;
         this.password = password;
         this.role = role;
+    }
+
+    public User(Long id, String name, String email, String password, String role, String department, Double cgpa, String skills) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.role = role;
+        this.department = department;
+        this.cgpa = cgpa;
+        this.skills = skills;
     }
 
     public Long getId() {
@@ -69,5 +84,37 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public Double getCgpa() {
+        return cgpa;
+    }
+
+    public void setCgpa(Double cgpa) {
+        this.cgpa = cgpa;
+    }
+
+    public String getSkills() {
+        return skills;
+    }
+
+    public void setSkills(String skills) {
+        this.skills = skills;
+    }
+
+    public String getGraduationYear() {
+        return graduationYear;
+    }
+
+    public void setGraduationYear(String graduationYear) {
+        this.graduationYear = graduationYear;
     }
 }

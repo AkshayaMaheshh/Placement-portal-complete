@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Toast from '../components/Toast';
-import { apiFetch, downloadResumePdf, fetchStudentResumeData } from '../services/api';
+import { apiFetch, downloadResumePdf, fetchStudentResumeData, updateStudent, updateInternship } from '../services/api';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -17,6 +17,10 @@ const AdminDashboard = () => {
     // --- Creative Features State ---
     const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
     const [spotlightQuery, setSpotlightQuery] = useState('');
+    const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [isEditInternshipOpen, setIsEditInternshipOpen] = useState(false);
+    const [editingInternship, setEditingInternship] = useState(null);
 
     const [data, setData] = useState({
         totalStudents: 0,
@@ -25,7 +29,8 @@ const AdminDashboard = () => {
         totalPlacements: 0,
         students: [],
         companies: [],
-        applications: []
+        applications: [],
+        internships: []
     });
 
     const [toast, setToast] = useState({ message: '', type: '' });
@@ -72,6 +77,43 @@ const AdminDashboard = () => {
     const handleLogout = () => {
         localStorage.clear();
         navigate('/');
+    };
+
+    const handleEditStudent = (student) => {
+        setEditingStudent({
+            ...student,
+            skills: student.manualSkills || ''
+        });
+        setIsEditStudentOpen(true);
+    };
+
+    const handleSaveStudent = async (e) => {
+        e.preventDefault();
+        try {
+            await updateStudent(editingStudent.id, editingStudent);
+            setToast({ message: "Student updated successfully", type: 'success' });
+            setIsEditStudentOpen(false);
+            fetchAdminData();
+        } catch (error) {
+            setToast({ message: "Failed to update student", type: 'error' });
+        }
+    };
+
+    const handleEditInternship = (internship) => {
+        setEditingInternship(internship);
+        setIsEditInternshipOpen(true);
+    };
+
+    const handleSaveInternship = async (e) => {
+        e.preventDefault();
+        try {
+            await updateInternship(editingInternship.id, editingInternship);
+            setToast({ message: "Internship updated successfully", type: 'success' });
+            setIsEditInternshipOpen(false);
+            fetchAdminData();
+        } catch (error) {
+            setToast({ message: "Failed to update internship", type: 'error' });
+        }
     };
 
     const fetchAdminData = async () => {
@@ -141,7 +183,7 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div style={{ paddingTop: '110px', paddingLeft: '80px', paddingRight: '80px', paddingBottom: '80px', color: 'black' }}>
+        <div style={{ paddingTop: '20px', paddingLeft: '2%', paddingRight: '2%', paddingBottom: '80px', color: 'black', width: '100%' }}>
             
             {/* Header Section */}
             <motion.div
@@ -187,8 +229,8 @@ const AdminDashboard = () => {
             )}
 
             {/* Tab Menu */}
-            <div className="d-flex gap-2 mb-4 overflow-auto">
-                {['Overview', 'Students', 'Companies', 'Activity Feed'].map(tab => (
+            <div className="d-flex gap-2 mb-4 overflow-auto no-scrollbar" style={{ paddingBottom: '5px' }}>
+                {['Overview', 'Students', 'Companies', 'Job Postings', 'Activity Feed'].map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)} style={{ background: activeTab === tab ? '#000' : 'transparent', color: activeTab === tab ? '#fff' : 'rgba(0,0,0,0.6)', border: `1px solid ${activeTab === tab ? '#000' : '#ddd'}`, padding: '10px 24px', fontSize: '15px', fontWeight: activeTab === tab ? '700' : '500', cursor: 'pointer', transition: 'all 0.3s', borderRadius: '10px', whiteSpace: 'nowrap' }}>
                         {tab}
                     </button>
@@ -319,6 +361,7 @@ const AdminDashboard = () => {
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
                                                     <button onClick={() => handleViewResume(student.id)} className="btn btn-sm me-2" style={{ border: '1px solid #000', backgroundColor: 'transparent', color: '#000', borderRadius: '6px', fontSize: '0.8rem', padding: '6px 10px' }}>View Resume</button>
+                                                    <button onClick={() => handleEditStudent(student)} className="btn btn-sm me-2" style={{ border: '1px solid #000', backgroundColor: 'transparent', color: '#000', borderRadius: '6px', fontSize: '0.8rem', padding: '6px 10px' }}>Edit</button>
                                                     <button onClick={() => handleMonitorActivity(student)} className="btn btn-sm" style={{ background: '#000', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid #000', padding: '6px 10px' }}>Monitor</button>
                                                 </td>
                                             </tr>
@@ -352,6 +395,36 @@ const AdminDashboard = () => {
                                                 <td className="py-3 px-4" style={{ color: 'rgba(0,0,0,0.7)' }}>{company.email}</td>
                                                 <td className="py-3 px-4">
                                                     <span className="badge" style={{ background: 'transparent', border: '1px solid #000', color: '#000', padding: '6px 12px', borderRadius: '8px' }}>Verified</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'Job Postings' && (
+                        <div className="universal-glass-card p-4 overflow-hidden">
+                            <h3 className="fw-bold mb-4">Job & Internship Postings</h3>
+                            <div className="table-responsive">
+                                <table className="table table-borderless align-middle mb-0">
+                                    <thead className="border-bottom">
+                                        <tr style={{ color: 'rgba(0,0,0,0.6)' }}>
+                                            <th className="py-3 px-4">Role Title</th>
+                                            <th className="py-3 px-4">Company</th>
+                                            <th className="py-3 px-4">Package/Stipend</th>
+                                            <th className="py-3 px-4 text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.internships && data.internships.map((intern, idx) => (
+                                            <tr key={idx} className="border-bottom border-light">
+                                                <td className="py-3 px-4 fw-bold">{intern.roleTitle}</td>
+                                                <td className="py-3 px-4">{intern.companyName}</td>
+                                                <td className="py-3 px-4">₹{intern.stipend}</td>
+                                                <td className="py-3 px-4 text-center">
+                                                    <button onClick={() => handleEditInternship(intern)} className="btn btn-sm" style={{ background: '#000', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid #000', padding: '6px 10px' }}>Edit Package</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -537,6 +610,108 @@ const AdminDashboard = () => {
                                     <div className="text-center py-4" style={{ color: '#aaa', fontSize: '0.9rem' }}>Type to search across the entire placement portal.</div>
                                 )}
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Student Modal */}
+            <AnimatePresence>
+                {isEditStudentOpen && editingStudent && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        className="modal-overlay" 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
+                    >
+                        <motion.div 
+                            initial={{ y: 50, opacity: 0 }} 
+                            animate={{ y: 0, opacity: 1 }} 
+                            exit={{ y: 50, opacity: 0 }} 
+                            className="universal-glass-card p-5" 
+                            style={{ background: '#fff', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}
+                        >
+                            <h3 className="fw-bold mb-4">Edit Student Information</h3>
+                            <form onSubmit={handleSaveStudent}>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Name</label>
+                                    <input type="text" className="form-control" value={editingStudent.name} onChange={e => setEditingStudent({...editingStudent, name: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Email</label>
+                                    <input type="email" className="form-control" value={editingStudent.email} onChange={e => setEditingStudent({...editingStudent, email: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Department</label>
+                                    <input type="text" className="form-control" value={editingStudent.department || ''} onChange={e => setEditingStudent({...editingStudent, department: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">CGPA</label>
+                                    <input type="number" step="0.01" className="form-control" value={editingStudent.cgpa || ''} onChange={e => setEditingStudent({...editingStudent, cgpa: e.target.value})} />
+                                </div>
+                                <div className="mb-4">
+                                    <label className="form-label fw-bold">Manual Skills (comma separated)</label>
+                                    <textarea className="form-control" rows="3" value={editingStudent.skills || ''} onChange={e => setEditingStudent({...editingStudent, skills: e.target.value})}></textarea>
+                                </div>
+                                <div className="d-flex gap-3">
+                                    <button type="submit" className="btn btn-dark flex-grow-1" style={{ borderRadius: '10px', padding: '12px' }}>Save Changes</button>
+                                    <button type="button" onClick={() => setIsEditStudentOpen(false)} className="btn btn-outline-dark flex-grow-1" style={{ borderRadius: '10px', padding: '12px' }}>Cancel</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Internship Modal */}
+            <AnimatePresence>
+                {isEditInternshipOpen && editingInternship && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        className="modal-overlay" 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
+                    >
+                        <motion.div 
+                            initial={{ y: 50, opacity: 0 }} 
+                            animate={{ y: 0, opacity: 1 }} 
+                            exit={{ y: 50, opacity: 0 }} 
+                            className="universal-glass-card p-5" 
+                            style={{ background: '#fff', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}
+                        >
+                            <h3 className="fw-bold mb-4">Edit Job/Offer Package</h3>
+                            <form onSubmit={handleSaveInternship}>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Role Title</label>
+                                    <input type="text" className="form-control" value={editingInternship.roleTitle} onChange={e => setEditingInternship({...editingInternship, roleTitle: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Company Name</label>
+                                    <input type="text" className="form-control" value={editingInternship.companyName} onChange={e => setEditingInternship({...editingInternship, companyName: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Package/Stipend</label>
+                                    <input type="number" className="form-control" value={editingInternship.stipend} onChange={e => setEditingInternship({...editingInternship, stipend: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">CGPA Limit</label>
+                                    <input type="number" step="0.01" className="form-control" value={editingInternship.cgpaLimit || ''} onChange={e => setEditingInternship({...editingInternship, cgpaLimit: e.target.value})} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold">Eligible Departments</label>
+                                    <input type="text" className="form-control" value={editingInternship.eligibleDepts || ''} onChange={e => setEditingInternship({...editingInternship, eligibleDepts: e.target.value})} />
+                                </div>
+                                <div className="mb-4">
+                                    <label className="form-label fw-bold">Description</label>
+                                    <textarea className="form-control" rows="4" value={editingInternship.description} onChange={e => setEditingInternship({...editingInternship, description: e.target.value})}></textarea>
+                                </div>
+                                <div className="d-flex gap-3">
+                                    <button type="submit" className="btn btn-dark flex-grow-1" style={{ borderRadius: '10px', padding: '12px' }}>Update Package</button>
+                                    <button type="button" onClick={() => setIsEditInternshipOpen(false)} className="btn btn-outline-dark flex-grow-1" style={{ borderRadius: '10px', padding: '12px' }}>Cancel</button>
+                                </div>
+                            </form>
                         </motion.div>
                     </motion.div>
                 )}

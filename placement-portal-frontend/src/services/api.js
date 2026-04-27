@@ -85,6 +85,29 @@ export const loginUser = async (loginData) => {
     }
 };
 
+export const loginWithGoogle = async (token) => {
+    try {
+        const response = await fetch(`${BASE_URL}/auth/google`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error in loginWithGoogle:', error);
+        throw error;
+    }
+};
+
 export const fetchStudentResumeData = async (studentId) => {
     try {
         const response = await apiFetch(`/resume/student/${studentId}`);
@@ -111,6 +134,37 @@ export const downloadResumePdf = async (studentId) => {
         setTimeout(() => window.URL.revokeObjectURL(url), 1000 * 60);
     } catch (error) {
         console.error('Error downloading resume pdf:', error);
+        throw error;
+    }
+};
+export const updateStudent = async (id, studentData) => {
+    try {
+        const response = await apiFetch(`/admin/student/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(studentData),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update student info');
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('Error updating student info:', error);
+        throw error;
+    }
+};
+
+export const updateInternship = async (id, internshipData) => {
+    try {
+        const response = await apiFetch(`/admin/internship/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(internshipData),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update internship info');
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('Error updating internship info:', error);
         throw error;
     }
 };

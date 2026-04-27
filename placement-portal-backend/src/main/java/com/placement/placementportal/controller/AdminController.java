@@ -1,6 +1,7 @@
 package com.placement.placementportal.controller;
 
 import com.placement.placementportal.model.Application;
+import com.placement.placementportal.model.Internship;
 import com.placement.placementportal.model.Resume;
 import com.placement.placementportal.model.User;
 import com.placement.placementportal.repository.ApplicationRepository;
@@ -58,6 +59,9 @@ public class AdminController {
                     studentMap.put("name", u.getName());
                     studentMap.put("email", u.getEmail());
                     studentMap.put("role", u.getRole());
+                    studentMap.put("department", u.getDepartment());
+                    studentMap.put("cgpa", u.getCgpa());
+                    studentMap.put("manualSkills", u.getSkills());
                     
                     // Fetch latest resume
                     Optional<Resume> resumeOpt = resumeRepository.findTopByStudentIdOrderByUploadedAtDesc(u.getId());
@@ -79,6 +83,7 @@ public class AdminController {
                 
         data.put("students", studentsData);
         data.put("companies", allUsers.stream().filter(u -> "COMPANY".equals(u.getRole())).collect(Collectors.toList()));
+        data.put("internships", internshipRepository.findAll());
         
         // Fetch and sort applications by date descending (to act as activity feed)
         List<Application> allApplications = applicationRepository.findAll();
@@ -86,6 +91,34 @@ public class AdminController {
         data.put("applications", allApplications);
 
         return ResponseEntity.ok(data);
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/student/{id}")
+    public ResponseEntity<?> updateStudent(@org.springframework.web.bind.annotation.PathVariable Long id, @org.springframework.web.bind.annotation.RequestBody User studentDetails) {
+        return userRepository.findById(id).map(student -> {
+            student.setName(studentDetails.getName());
+            student.setEmail(studentDetails.getEmail());
+            student.setDepartment(studentDetails.getDepartment());
+            student.setCgpa(studentDetails.getCgpa());
+            student.setSkills(studentDetails.getSkills());
+            userRepository.save(student);
+            return ResponseEntity.ok("Student updated successfully");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/internship/{id}")
+    public ResponseEntity<?> updateInternship(@org.springframework.web.bind.annotation.PathVariable Long id, @org.springframework.web.bind.annotation.RequestBody Internship internshipDetails) {
+        return internshipRepository.findById(id).map(internship -> {
+            internship.setRoleTitle(internshipDetails.getRoleTitle());
+            internship.setCompanyName(internshipDetails.getCompanyName());
+            internship.setDescription(internshipDetails.getDescription());
+            internship.setStipend(internshipDetails.getStipend());
+            internship.setCgpaLimit(internshipDetails.getCgpaLimit());
+            internship.setEligibleDepts(internshipDetails.getEligibleDepts());
+            internship.setRequiredSkills(internshipDetails.getRequiredSkills());
+            internshipRepository.save(internship);
+            return ResponseEntity.ok("Internship updated successfully");
+        }).orElse(ResponseEntity.notFound().build());
     }
 
 }
